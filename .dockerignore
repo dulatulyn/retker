@@ -1,0 +1,17 @@
+# образу нужны только backend/ и ml/
+.git
+.github
+.claude
+frontend
+tools
+data
+context
+assets
+docs
+**/__pycache__
+**/*.pyc
+**/*.pyo
+*.md
+backend/.env
+backend/.venv
+backend/venv

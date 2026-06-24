@@ -1,0 +1,44 @@
+# Продакшн-стек retker для CO-HOST на VM с asynkor.
+# Полностью изолирован: своя сеть, БЕЗ публикации 80/443, БЕЗ certbot.
+# retker-nginx подключён к сети asynkor (coframe_internal), чтобы фронт-nginx
+# asynkor'а мог достучаться к нему по имени `retker-nginx` (путь A).
+# Для пути B (Cloudflare на отдельном порту) — раскомментируй ports у nginx.
+services:
+  api:
+    image: retker-api:latest
+    container_name: retker-api
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8000"
+    networks:
+      - retker
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/',timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: retker-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - retker            # чтобы достучаться до retker-api
+      - coframe_internal  # чтобы asynkor-nginx достучался до retker-nginx
+    volumes:
+      - ./nginx/retker.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend-dist:/usr/share/nginx/html:ro
+    # ПУТЬ A (через nginx asynkor'а): порты наружу НЕ публикуем.
+    # ПУТЬ B (Cloudflare → origin :8080): раскомментируй строки ниже и открой 8080 в фаерволе.
+    # ports:
+    #   - "8080:80"
+
+networks:
+  retker:
+    driver: bridge
+  coframe_internal:
+    external: true   # уже существует (создана стеком asynkor/coframe)

@@ -1,0 +1,6 @@
+Destination Port,Flow Duration,Total Fwd Packets,Total Backward Packets,Flow Bytes/s,Flow Packets/s,Label
+80,120,10,8,1500.0,50.0,BENIGN
+443,95,12,10,2000.0,60.0,BENIGN
+22,5000000,2,0,inf,0.4,SSH-Patator
+80,80,9,7,1400.0,48.0,BENIGN
+53,60,4,3,900.0,30.0,BENIGN

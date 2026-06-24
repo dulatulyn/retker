@@ -1,0 +1,48 @@
+// Shared dashboard labels referenced by several dash components via dynamic keys:
+//   category   -> t(`dash.cat.${category}`)
+//   range      -> t(`dash.range.${id}`)
+// Severity / status / score render through the badge components in dash/ui.tsx.
+export const dashshared = {
+  ru: {
+    'dash.cat.access': 'Доступ',
+    'dash.cat.anomaly': 'Аномалии',
+    'dash.cat.leak': 'Утечки',
+    'dash.cat.fraud': 'Фрод',
+    'dash.cat.phishing': 'Фишинг',
+    'dash.cat.normal': 'Норма',
+    'dash.range.hour': 'Час',
+    'dash.range.day': 'День',
+    'dash.range.week': 'Неделя',
+    'dash.range.month': 'Месяц',
+    'dash.sev.crit': 'КРИТ',
+    'dash.sev.high': 'ВЫС',
+    'dash.sev.med': 'СРЕД',
+    'dash.sev.low': 'НИЗ',
+    'dash.status.open': 'Открыт',
+    'dash.status.investigating': 'В работе',
+    'dash.status.blocked': 'Заблокирован',
+    'dash.status.closed': 'Закрыт',
+    'dash.score': 'риск',
+  },
+  kk: {
+    'dash.cat.access': 'Қол жеткізу',
+    'dash.cat.anomaly': 'Аномалиялар',
+    'dash.cat.leak': 'Деректер ағуы',
+    'dash.cat.fraud': 'Алаяқтық',
+    'dash.cat.phishing': 'Фишинг',
+    'dash.cat.normal': 'Қалыпты',
+    'dash.range.hour': 'Сағат',
+    'dash.range.day': 'Күн',
+    'dash.range.week': 'Апта',
+    'dash.range.month': 'Ай',
+    'dash.sev.crit': 'СЫН',
+    'dash.sev.high': 'ЖОҒ',
+    'dash.sev.med': 'ОРТ',
+    'dash.sev.low': 'ТӨМ',
+    'dash.status.open': 'Ашық',
+    'dash.status.investigating': 'Жұмыста',
+    'dash.status.blocked': 'Бұғатталған',
+    'dash.status.closed': 'Жабық',
+    'dash.score': 'тәуекел',
+  },
+}

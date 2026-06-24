@@ -1,0 +1,188 @@
+{
+  "model": "unified_threat",
+  "algo": "HistGradientBoostingClassifier",
+  "datasets": [
+    "paysim",
+    "nslkdd",
+    "phishing"
+  ],
+  "vectors": [
+    "transaction",
+    "access",
+    "web"
+  ],
+  "train_rows": 480521,
+  "test_rows": 120131,
+  "feature_order": [
+    "ec_transaction",
+    "ec_access",
+    "ec_web",
+    "amount",
+    "log_amount",
+    "type_transfer",
+    "type_cash_out",
+    "type_payment",
+    "type_cash_in",
+    "type_debit",
+    "oldbalanceOrg",
+    "newbalanceOrig",
+    "balance_delta_org",
+    "oldbalanceDest",
+    "newbalanceDest",
+    "balance_delta_dest",
+    "orig_emptied",
+    "dest_was_empty",
+    "amount_to_orig_ratio",
+    "error_balance_orig",
+    "error_balance_dest",
+    "failed_logins",
+    "login_success",
+    "src_bytes",
+    "dst_bytes",
+    "conn_count",
+    "srv_count",
+    "serror_rate",
+    "same_srv_rate",
+    "diff_srv_rate",
+    "dst_host_count",
+    "dst_host_srv_count",
+    "is_guest_login",
+    "num_compromised",
+    "hot",
+    "duration",
+    "url_length",
+    "num_dots",
+    "num_digits",
+    "num_special",
+    "has_at",
+    "has_ip",
+    "has_punycode",
+    "num_subdomains",
+    "has_https",
+    "suspicious_tld",
+    "digit_ratio",
+    "has_login_word",
+    "url_entropy"
+  ],
+  "overall": {
+    "n": 120131,
+    "positives": 44582,
+    "roc_auc": 0.9817,
+    "pr_auc": 0.9708,
+    "precision@0.5": 0.8463,
+    "recall@0.5": 0.9366,
+    "confusion": {
+      "tn": 67967,
+      "fp": 7582,
+      "fn": 2827,
+      "tp": 41755
+    }
+  },
+  "by_vector": {
+    "transaction": {
+      "n": 44006,
+      "positives": 1657,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9994,
+      "precision@0.5": 0.9964,
+      "recall@0.5": 0.9976,
+      "confusion": {
+        "tn": 42343,
+        "fp": 6,
+        "fn": 4,
+        "tp": 1653
+      }
+    },
+    "access": {
+      "n": 25194,
+      "positives": 11641,
+      "roc_auc": 0.9999,
+      "pr_auc": 0.9999,
+      "precision@0.5": 0.9979,
+      "recall@0.5": 0.9981,
+      "confusion": {
+        "tn": 13528,
+        "fp": 25,
+        "fn": 22,
+        "tp": 11619
+      }
+    },
+    "web": {
+      "n": 50931,
+      "positives": 31284,
+      "roc_auc": 0.9016,
+      "pr_auc": 0.942,
+      "precision@0.5": 0.7904,
+      "recall@0.5": 0.9105,
+      "confusion": {
+        "tn": 12096,
+        "fp": 7551,
+        "fn": 2801,
+        "tp": 28483
+      }
+    }
+  },
+  "top_features": [
+    {
+      "feature": "error_balance_orig",
+      "importance": 0.10719
+    },
+    {
+      "feature": "balance_delta_org",
+      "importance": 0.04917
+    },
+    {
+      "feature": "num_dots",
+      "importance": 0.02459
+    },
+    {
+      "feature": "num_special",
+      "importance": 0.02283
+    },
+    {
+      "feature": "has_login_word",
+      "importance": 0.02265
+    },
+    {
+      "feature": "url_entropy",
+      "importance": 0.01731
+    },
+    {
+      "feature": "newbalanceOrig",
+      "importance": 0.01686
+    },
+    {
+      "feature": "num_digits",
+      "importance": 0.01657
+    },
+    {
+      "feature": "src_bytes",
+      "importance": 0.01612
+    },
+    {
+      "feature": "digit_ratio",
+      "importance": 0.01199
+    },
+    {
+      "feature": "suspicious_tld",
+      "importance": 0.01137
+    },
+    {
+      "feature": "url_length",
+      "importance": 0.01105
+    },
+    {
+      "feature": "num_subdomains",
+      "importance": 0.00816
+    },
+    {
+      "feature": "has_ip",
+      "importance": 0.00562
+    },
+    {
+      "feature": "oldbalanceDest",
+      "importance": 0.00535
+    }
+  ],
+  "train_seconds": 28.9
+}
