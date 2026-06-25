@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import threading
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
 from . import brain, scenario
@@ -136,7 +137,7 @@ def overview(org: Org = Depends(get_current_org)):
             pass
 
     return {
-        "kpis": {"events_24h": len(evs), "open_incidents": len(open_inc),
+        "kpis": {"events_24h": store.total_events[org.id] or len(evs), "open_incidents": len(open_inc),
                  "blocked": len(blocked), "leaks_prevented": len(leaks)},
         "breakdown": breakdown,
         "hourly": hourly,
@@ -327,6 +328,29 @@ def incidents_bulk(body: BulkIn, org: Org = Depends(get_current_org)):
     return {"updated": updated}
 
 
+def _enrich_incident(org_id: str, inc_id: str, entity: str, alerts: list) -> None:
+    try:
+        narr = ai_analyst.build_incident(entity, alerts)
+    except Exception:
+        return
+    inc = store.get_incident(org_id, inc_id)
+    if inc is None or not narr:
+        return
+    if narr.get("hypothesis"):
+        inc.hypothesis = narr["hypothesis"]
+    if narr.get("ai_summary"):
+        inc.ai_summary = narr["ai_summary"]
+    if narr.get("recommended_actions"):
+        inc.recommended_actions = narr["recommended_actions"]
+    if narr.get("mitre"):
+        inc.mitre = narr["mitre"]
+    if narr.get("title") and inc.title.startswith("Ручной инцидент"):
+        inc.title = narr["title"]
+    inc.updated_at = _now()
+    store.upsert_incident(inc)
+    bus.publish(org_id, "incident", inc.model_dump())
+
+
 @api.post("/incidents/from_events")
 def incidents_from_events(body: FromEventsIn, org: Org = Depends(get_current_org)):
     ids = set(body.event_ids)
@@ -341,6 +365,7 @@ def incidents_from_events(body: FromEventsIn, org: Org = Depends(get_current_org
     severity = max(e.risk.severity for e in evs)
     score = max(e.risk.score for e in evs)
     timeline = [{"ts": e.ts, "label": e.action or e.event_class} for e in evs]
+    alerts = [a for a in store.alerts[org.id] if a.event_id in ids]
 
     inc = Incident(
         id=nid("inc"),
@@ -353,15 +378,19 @@ def incidents_from_events(body: FromEventsIn, org: Org = Depends(get_current_org
         status="open",
         created_at=_now(),
         updated_at=_now(),
-        alert_ids=[],
+        alert_ids=[a.id for a in alerts],
         timeline=timeline,
         hypothesis="",
         mitre=[],
-        ai_summary=f"Инцидент создан вручную из {len(evs)} событий.",
+        ai_summary=(f"AI анализирует инцидент из {len(evs)} событий по {entity}…"
+                    if alerts else f"Инцидент из {len(evs)} событий по {entity}."),
         recommended_actions=[],
     )
     store.upsert_incident(inc)
     bus.publish(org.id, "incident", inc.model_dump())
+    if alerts:
+        threading.Thread(target=_enrich_incident,
+                         args=(org.id, inc.id, entity, alerts), daemon=True).start()
     return inc.model_dump()
 
 

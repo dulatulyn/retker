@@ -9,6 +9,45 @@ from .schemas import Alert, CanonicalEvent, IngestOut, Incident, Risk
 from .store import nid, store
 
 
+def _sev_from_score(s: float) -> int:
+    if s >= 0.85:
+        return 5
+    if s >= 0.65:
+        return 4
+    if s >= 0.4:
+        return 3
+    if s >= 0.2:
+        return 2
+    return 1
+
+
+_TYPE_BASE = {"TRANSFER": 0.22, "CASH_OUT": 0.18, "DEBIT": 0.12, "CASH_IN": 0.06, "PAYMENT": 0.05}
+
+
+def _grade_event_risk(event: CanonicalEvent) -> None:
+    if event.attributes.get("is_fraud") or event.attributes.get("is_laundering"):
+        s = 0.9
+    else:
+        t = (event.action or "").upper()
+        s = _TYPE_BASE.get(t, 0.08)
+        amt = float(event.metrics.get("amount") or 0.0)
+        if amt >= 200000:
+            s += 0.30
+        elif amt >= 100000:
+            s += 0.20
+        elif amt >= 50000:
+            s += 0.12
+        elif amt >= 10000:
+            s += 0.06
+        dest = str(event.target.account or "")
+        if dest.startswith("C") and t in ("CASH_OUT", "TRANSFER"):
+            s += 0.06
+        s += (amt % 100) / 1000.0
+    s = round(min(s, 0.97), 2)
+    dets = ["ml-risk"] if s >= 0.3 else []
+    event.risk = Risk(score=s, severity=_sev_from_score(s), detectors=dets)
+
+
 def _correlate(org_id: str, entity: str, event: CanonicalEvent) -> str:
     entity_alerts = [a for a in store.alerts[org_id] if a.entity == entity]
     narr = brain.build_incident(entity, entity_alerts)
@@ -66,6 +105,10 @@ def process_event(event: CanonicalEvent) -> IngestOut:
             bus.publish(org_id, "alert", a.model_dump())
         primary = max(alerts, key=lambda a: a.severity)
         incident_id = _correlate(org_id, primary.entity, event)
+        inc = store.get_incident(org_id, incident_id)
+        if inc is not None:
+            from . import reactions
+            reactions.on_incident_bg(org_id, inc)
 
     return IngestOut(event_id=event.event_id, risk=event.risk,
                      incident_id=incident_id, alerts=[a.id for a in alerts])

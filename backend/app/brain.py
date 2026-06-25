@@ -43,7 +43,7 @@ def build_incident(entity: str, alerts: list[Alert]) -> dict:
             "hypothesis": "Подбор пароля → вход из новой страны с невозможной скоростью → массовая выгрузка данных. Классический account takeover с эксфильтрацией.",
             "mitre": ["T1110 Brute Force", "T1078 Valid Accounts", "T1567 Exfiltration"],
             "ai_summary": f"Цепочка событий по {entity} — захват аккаунта с выгрузкой персональных данных. Риск критический.",
-            "recommended_actions": ["Заблокировать сессию", "Отозвать токены доступа", "Сбросить пароль", "Аудит выгруженных данных"],
+            "recommended_actions": [f"Заблокировать сессию {entity}", f"Отозвать токены доступа {entity}", "Сбросить пароль и включить MFA", "Аудит выгруженных данных"],
         }
     if "fraud" in cats:
         return {
@@ -53,7 +53,7 @@ def build_incident(entity: str, alerts: list[Alert]) -> dict:
             "hypothesis": "Перевод на промежуточный счёт с немедленным обналичиванием — типология отмывания.",
             "mitre": [],
             "ai_summary": f"Подозрительная финансовая активность по {entity}: паттерн перевод→обнал.",
-            "recommended_actions": ["Заморозить счёт", "Проверить контрагента", "Сообщить в комплаенс"],
+            "recommended_actions": [f"Заморозить счёт {entity}", "Проверить контрагента и происхождение средств", "Сформировать СПО и эскалировать в комплаенс"],
         }
     if "phishing" in cats:
         return {
@@ -62,8 +62,8 @@ def build_incident(entity: str, alerts: list[Alert]) -> dict:
             "severity": sev,
             "hypothesis": "Домен имитирует доверенный бренд (омоглиф/подозрительный TLD).",
             "mitre": ["T1566 Phishing"],
-            "ai_summary": f"Обнаружен фишинговый домen {entity}.",
-            "recommended_actions": ["Заблокировать домен", "Оповестить сотрудников"],
+            "ai_summary": f"Обнаружен фишинговый домен {entity}.",
+            "recommended_actions": [f"Заблокировать домен {entity}", "Оповестить сотрудников о фишинговой рассылке", "Добавить домен в блок-лист"],
         }
     if "leak" in cats:
         return {
@@ -73,7 +73,7 @@ def build_incident(entity: str, alerts: list[Alert]) -> dict:
             "hypothesis": "Чувствительные данные (ИИН/карты/секреты) в исходящем потоке.",
             "mitre": ["T1530 Data from Cloud Storage"],
             "ai_summary": f"Зафиксирована утечка чувствительных данных по {entity}.",
-            "recommended_actions": ["Заблокировать выгрузку", "Уведомить DPO"],
+            "recommended_actions": [f"Заблокировать выгрузку {entity}", "Уведомить DPO", "Провести аудит утёкших данных"],
         }
     a0 = alerts[0]
     return {

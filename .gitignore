@@ -30,6 +30,9 @@ data/raw/
 
 .DS_Store
 *.log
+*.db
+*.db-wal
+*.db-shm
 tools/shots/
 .claude/
 .idea/

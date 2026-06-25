@@ -135,7 +135,38 @@ class AnthropicProvider(LLMProvider):
             raise ProviderError(f"anthropic: {e}") from e
 
 
+class OllamaProvider(LLMProvider):
+    name = "ollama"
+
+    def __init__(self) -> None:
+        self.host = settings.OLLAMA_HOST.rstrip("/")
+        self.model = settings.OLLAMA_MODEL
+
+    def available(self) -> bool:
+        return bool(self.host)
+
+    def complete(self, system, messages, *, json_mode=False, max_tokens=None, temperature=None):
+        if not self.available():
+            raise ProviderError("ollama: нет хоста")
+        msgs = ([{"role": "system", "content": system}] if system else []) + messages
+        body: dict = {
+            "model": self.model,
+            "messages": msgs,
+            "stream": False,
+            "options": {"temperature": settings.TEMPERATURE if temperature is None else temperature},
+        }
+        if json_mode:
+            body["format"] = "json"
+        try:
+            r = httpx.post(f"{self.host}/api/chat", json=body, timeout=settings.HTTP_TIMEOUT)
+            r.raise_for_status()
+            return r.json()["message"]["content"]
+        except (httpx.HTTPError, KeyError, IndexError) as e:
+            raise ProviderError(f"ollama: {e}") from e
+
+
 _REGISTRY = {
+    "ollama": OllamaProvider,
     "gemini": GeminiProvider,
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,

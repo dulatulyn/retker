@@ -47,12 +47,16 @@ export function AiChatPanel({ open, onClose, onNavigate }:
   const [chatId, setChatId] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
 
-  const endRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const liveRef = useRef<{ text: string; tools: string[]; blocks: Block[] }>({ text: '', tools: [], blocks: [] })
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, streaming])
+  // скроллим ТОЛЬКО внутренний список чата (scrollIntoView тянул и всё окно страницы)
+  useEffect(() => {
+    const el = bodyRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }, [msgs, streaming])
   useEffect(() => { if (open) loadChats() }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => wsRef.current?.close(), [])
 
@@ -209,7 +213,7 @@ export function AiChatPanel({ open, onClose, onNavigate }:
               ))}
             </div>
           ) : (
-            <div className="h-full overflow-y-auto px-4">
+            <div ref={bodyRef} className="h-full overflow-y-auto px-4">
               {msgs.length === 0 && !streaming ? (
                 <div className="flex h-full flex-col items-center justify-center text-center">
                   <h3 className="text-base font-semibold text-white">Чем помочь?</h3>
@@ -290,7 +294,6 @@ export function AiChatPanel({ open, onClose, onNavigate }:
                       )}
                     </div>
                   )}
-                  <div ref={endRef} />
                 </div>
               )}
             </div>

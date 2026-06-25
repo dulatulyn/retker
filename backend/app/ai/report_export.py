@@ -138,3 +138,27 @@ def export(report: dict, out_dir: str, basename: str | None = None) -> dict:
     docx_path = to_docx(report, str(d / f"{base}.docx"))
     xlsx_path = to_xlsx(report, str(d / f"{base}.xlsx"))
     return {"docx": docx_path, "xlsx": xlsx_path, "markdown": report.get("markdown")}
+
+
+def _to_bytes(report: dict, suffix: str, writer) -> bytes | None:
+    import os
+    import tempfile
+    fd, p = tempfile.mkstemp(suffix=suffix)
+    os.close(fd)
+    try:
+        if writer(report, p) is None:
+            return None
+        return Path(p).read_bytes()
+    finally:
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+
+
+def to_docx_bytes(report: dict) -> bytes | None:
+    return _to_bytes(report, ".docx", to_docx)
+
+
+def to_xlsx_bytes(report: dict) -> bytes | None:
+    return _to_bytes(report, ".xlsx", to_xlsx)

@@ -9,6 +9,8 @@ services:
     container_name: retker-api
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - ./data:/app/data
     expose:
       - "8000"
     networks:

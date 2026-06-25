@@ -36,9 +36,12 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+
 PROVIDER_ORDER = [
     p.strip().lower()
-    for p in os.environ.get("AI_PROVIDER_ORDER", "gemini,openai,anthropic").split(",")
+    for p in os.environ.get("AI_PROVIDER_ORDER", "ollama,gemini,openai,anthropic").split(",")
     if p.strip()
 ]
 

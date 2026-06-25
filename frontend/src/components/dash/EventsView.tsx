@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Bot, ArrowUp, FilePlus2, Download, X } from 'lucide-react'
+import { Search, Bot, ArrowUp, FilePlus2, Download, X, Loader2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useT } from '../../lib/i18n'
 import { CAT_COLOR } from './cat'
@@ -9,6 +9,9 @@ const CATS = ['access', 'anomaly', 'leak', 'fraud', 'phishing', 'normal']
 const SEVS = ['crit', 'high', 'med', 'low']
 
 const COL_COUNT = 10
+
+const riskColor = (s: number): string =>
+  s >= 0.7 ? '#f87171' : s >= 0.4 ? '#fb923c' : s >= 0.2 ? '#facc15' : '#94a3b8'
 
 const safeTime = (ts: any): string => {
   if (ts == null || ts === '') return '—'
@@ -41,6 +44,7 @@ export function EventsView({ events, onChanged }: { events: any[]; onChanged: ()
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [open, setOpen] = useState<string | null>(null)
   const [fu, setFu] = useState<Record<string, { q: string; a: string; busy: boolean }>>({})
+  const [creating, setCreating] = useState(false)
 
   const toggle = (set: Set<string>, v: string, setter: any) => {
     const n = new Set(set)
@@ -89,8 +93,10 @@ export function EventsView({ events, onChanged }: { events: any[]; onChanged: ()
   }
 
   const createIncident = async () => {
-    if (!selIds.length) return
+    if (!selIds.length || creating) return
+    setCreating(true)
     try { await api.fromEvents(selIds); setSel(new Set()); onChanged() } catch {}
+    finally { setCreating(false) }
   }
   const exportCsv = () => {
     const cols = ['ts', 'event_class', 'action', 'subject', 'source', 'ip', 'country', 'severity', 'detectors']
@@ -100,7 +106,7 @@ export function EventsView({ events, onChanged }: { events: any[]; onChanged: ()
         e.source || '', e.actor?.ip || '', e.actor?.country || '', e.risk?.severity || 1,
         (e.risk?.detectors || []).join('|')].map(csvCell).join(','))
     }
-    const b = new Blob([lines.join('\n')], { type: 'text/csv' })
+    const b = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const u = URL.createObjectURL(b); const a = document.createElement('a')
     a.href = u; a.download = 'events.csv'; a.click(); URL.revokeObjectURL(u)
   }
@@ -152,7 +158,7 @@ export function EventsView({ events, onChanged }: { events: any[]; onChanged: ()
       {selCount > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-surface-2 px-5 py-2.5 text-sm">
           <span className="text-white/70">{t('dashviews.events.selected', { n: selCount })}</span>
-          <button onClick={createIncident} className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0a8ae6]"><FilePlus2 size={13} /> {t('dashviews.events.create_incident')}</button>
+          <button onClick={createIncident} disabled={creating} className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0a8ae6] disabled:opacity-60">{creating ? <Loader2 size={13} className="animate-spin" /> : <FilePlus2 size={13} />} {t('dashviews.events.create_incident')}</button>
           <button onClick={exportCsv} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/15"><Download size={13} /> {t('dashviews.events.export_csv')}</button>
           <button onClick={() => setSel(new Set())} className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-white/50 hover:text-white"><X size={13} /> {t('dashviews.events.unselect')}</button>
         </div>
@@ -207,7 +213,12 @@ function FragmentRow({ e, t, selected, onSelect, open, onOpen, fu, setFuQ, ask }
         <td className="hidden cursor-pointer px-3 py-3 lg:table-cell" onClick={onOpen}>{e.source ? <span className="rounded bg-white/[0.06] px-2 py-0.5 text-xs text-white/55">{e.source}</span> : <span className="text-white/30">—</span>}</td>
         <td className="hidden cursor-pointer px-3 py-3 text-white/45 md:table-cell" onClick={onOpen}>{e.actor?.ip || '—'}</td>
         <td className="hidden cursor-pointer px-3 py-3 text-white/70 md:table-cell" onClick={onOpen}><Flag code={e.actor?.country} /></td>
-        <td className="cursor-pointer px-3 py-3" onClick={onOpen}>{e.risk?.severity > 1 ? <SevBadge n={e.risk.severity} /> : <span className="text-white/30">—</span>}</td>
+        <td className="cursor-pointer px-3 py-3" onClick={onOpen}>{e.risk?.score > 0 ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="tabular-nums font-medium" style={{ color: riskColor(e.risk.score) }}>{Number(e.risk.score).toFixed(2)}</span>
+            {e.risk?.severity > 2 && <SevBadge n={e.risk.severity} />}
+          </span>
+        ) : <span className="text-white/30">—</span>}</td>
         <td className="hidden cursor-pointer px-3 py-3 pr-5 text-white/45 md:table-cell" onClick={onOpen}>{(e.risk?.detectors || []).join(', ') || t('dashviews.events.detector_normal')}</td>
       </tr>
       {open && (

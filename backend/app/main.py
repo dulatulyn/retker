@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import db
+from . import reactions
 from . import scenario
+from .ai.providers import router as ai_router
 from .chat_routes import chat_router
 from .config import CORS_ORIGINS
+from .export_routes import export_router
+from .actions_routes import actions_router
+from .import_routes import import_router
+from .insight_routes import insight_router
+from .reactions_routes import reactions_router
 from .routers import ROUTERS
 from .search_routes import search_router
+from .test_routes import test_router
 from .security import hash_password
 from .store import store
 
@@ -63,11 +73,39 @@ def seed_test_orgs() -> None:
         store.add_source(org.id, "Тест-коннектор", "full", key)
 
 
+SNAPSHOT_INTERVAL = 60
+
+
+async def _snapshot_loop() -> None:
+    while True:
+        try:
+            await asyncio.sleep(SNAPSHOT_INTERVAL)
+            store.snapshot_all()
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db.init_db()
+    db.load_all(store)
+    db.load_event_tails(store)
+    db.load_counters(store)
+    reactions.load_from_db()
     seed_demo()
     seed_test_orgs()
-    yield
+    snapshot_task = asyncio.create_task(_snapshot_loop())
+    try:
+        yield
+    finally:
+        snapshot_task.cancel()
+        try:
+            await snapshot_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        store.snapshot_all()
 
 
 OPENAPI_TAGS = [
@@ -109,8 +147,27 @@ for r in ROUTERS:
     app.include_router(r)
 app.include_router(chat_router)
 app.include_router(search_router)
+app.include_router(export_router)
+app.include_router(import_router)
+app.include_router(reactions_router)
+app.include_router(actions_router)
+app.include_router(test_router)
+app.include_router(insight_router)
 
 
 @app.get("/")
 def health():
     return {"service": "retker", "status": "ok"}
+
+
+@app.get("/v1/ai/health")
+def ai_health():
+    provs = ai_router.providers
+    first_avail = next((p.name for p in provs if p.available()), None)
+    online = ai_router.available()
+    return {
+        "online": online,
+        "provider": ai_router.last_provider or first_avail,
+        "mode": "perimeter" if (not online or first_avail == "ollama") else "cloud",
+        "providers": [{"name": p.name, "available": p.available()} for p in provs],
+    }

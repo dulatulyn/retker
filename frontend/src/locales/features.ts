@@ -64,13 +64,13 @@ export const features = {
     'features.split.react.desc':
       'Остановите угрозу прямо из карточки инцидента и получите готовый документ для службы безопасности и регулятора.',
     'features.split.react.point1': 'Блок сессии / отзыв доступа',
-    'features.split.react.point2': 'Авто-отчёт PDF',
+    'features.split.react.point2': 'Отчёт и СПО для регулятора',
     'features.split.react.point3': 'Запросы к данным словами',
     'features.split.react.img': 'Поток событий и запросы словами',
 
     // HowItWorks.tsx
     'features.how.eyebrow': 'Как это работает',
-    'features.how.title': 'От сырого лога до решения за секунды',
+    'features.how.title': 'От сырого лога до реакции за секунды',
     'features.how.step1.title': 'Подключите источники',
     'features.how.step1.desc':
       'Логи входов, доступа к данным, транзакций и почты приходят через один эндпоинт. Без агентов на машинах.',
@@ -190,13 +190,13 @@ export const features = {
     'features.split.react.desc':
       'Қауіпті инцидент картасынан тікелей тоқтатыңыз да, қауіпсіздік қызметі мен реттеуші үшін дайын құжатты алыңыз.',
     'features.split.react.point1': 'Сессияны бұғаттау / қол жеткізуді кері қайтару',
-    'features.split.react.point2': 'Авто-есеп PDF',
+    'features.split.react.point2': 'Реттеуші үшін есеп пен хабарлама',
     'features.split.react.point3': 'Деректерге сөзбен сұраулар',
     'features.split.react.img': 'Оқиғалар ағыны және сөзбен сұраулар',
 
     // HowItWorks.tsx
     'features.how.eyebrow': 'Бұл қалай жұмыс істейді',
-    'features.how.title': 'Шикі логтан шешімге дейін бірнеше секундта',
+    'features.how.title': 'Шикі логтан ден қоюға дейін бірнеше секундта',
     'features.how.step1.title': 'Дереккөздерді қосыңыз',
     'features.how.step1.desc':
       'Кірулер, деректерге қол жеткізу, транзакциялар мен пошта логтары бір эндпоинт арқылы келеді. Машиналарда агенттерсіз.',

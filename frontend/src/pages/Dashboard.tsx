@@ -3,7 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import {
   LayoutDashboard, ShieldAlert, Activity, Sparkles, SlidersHorizontal,
   Settings, Bell, ArrowLeft, Bot as BotIcon, ChevronRight, LogOut, ShieldCheck, Download,
-  Menu, X, Loader2, Ban, Lock, KeyRound,
+  Menu, X, Loader2, Ban, Lock, KeyRound, Upload, Zap, Play,
 } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import { ThreatChart } from '../components/dash/ThreatChart'
@@ -13,10 +13,55 @@ import { GlobalSearch } from '../components/dash/GlobalSearch'
 import { SeverityDonut } from '../components/dash/SeverityDonut'
 import { OverviewCharts } from '../components/dash/OverviewCharts'
 import { SourcesView } from '../components/dash/SourcesView'
+import { ImportView } from '../components/dash/ImportView'
+import { ReactionsView } from '../components/dash/ReactionsView'
+import { IncidentActions } from '../components/dash/IncidentActions'
+import { IncidentInsight } from '../components/dash/IncidentInsight'
 import { SevBadge, ScoreBadge, StatusBadge, Panel, fmtTime } from '../components/dash/ui'
 import { CAT_COLOR } from '../components/dash/cat'
-import { api } from '../lib/api'
+import { api, API_BASE, getToken } from '../lib/api'
 import { useAuth } from '../lib/auth'
+
+function mdInline(s: string): any[] {
+  return s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean).map((p, i) => {
+    if (p.startsWith('**') && p.endsWith('**')) return <strong key={i} className="font-semibold text-white">{p.slice(2, -2)}</strong>
+    if (p.startsWith('`') && p.endsWith('`')) return <code key={i} className="rounded bg-white/10 px-1 py-0.5 text-[12px]">{p.slice(1, -1)}</code>
+    return <span key={i}>{p}</span>
+  })
+}
+
+function Md({ text }: { text: string }) {
+  const blocks: any[] = []
+  let list: string[] = []
+  const flush = (k: any) => {
+    if (!list.length) return
+    blocks.push(<ul key={'l' + k} className="my-1 list-disc space-y-1 pl-5 marker:text-white/30">{list.map((it, j) => <li key={j} className="text-white/70">{mdInline(it)}</li>)}</ul>)
+    list = []
+  }
+  text.split('\n').forEach((ln, i) => {
+    if (ln.startsWith('- ')) { list.push(ln.slice(2)); return }
+    flush(i)
+    if (ln.startsWith('### ')) blocks.push(<h5 key={i} className="mt-3 text-sm font-semibold text-white">{mdInline(ln.slice(4))}</h5>)
+    else if (ln.startsWith('## ')) blocks.push(<h4 key={i} className="mt-4 text-[15px] font-semibold text-white">{mdInline(ln.slice(3))}</h4>)
+    else if (ln.startsWith('# ')) blocks.push(<h3 key={i} className="text-base font-bold text-white">{mdInline(ln.slice(2))}</h3>)
+    else if (ln.trim().startsWith('---')) blocks.push(<hr key={i} className="my-3 border-white/10" />)
+    else if (ln.trim() === '') blocks.push(<div key={i} className="h-1.5" />)
+    else blocks.push(<p key={i} className="text-white/75">{mdInline(ln)}</p>)
+  })
+  flush('end')
+  return <div>{blocks}</div>
+}
+
+const TL_COLORS: [RegExp, string][] = [
+  [/cash_out|transfer|payment|обнал|перевод|transaction|fraud/i, '#00bb88'],
+  [/login|access|вход|brute|impossible/i, '#0099ff'],
+  [/export|bulk|выгруз|data|ueba|dlp|иин/i, '#8b5cf6'],
+  [/email|phish|письм|почт|домен/i, '#f59e0b'],
+]
+function tlColor(label: string): string {
+  for (const [re, c] of TL_COLORS) if (re.test(label || '')) return c
+  return '#9ca3af'
+}
 import { useT } from '../lib/i18n'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
@@ -180,6 +225,18 @@ function IncidentsView({ incidents, selectedId, setSelectedId, onChanged }:
     const u = URL.createObjectURL(b); const a = document.createElement('a')
     a.href = u; a.download = `${inc.id}.md`; a.click(); URL.revokeObjectURL(u)
   }
+  const dlFile = async (fmt: 'docx' | 'xlsx') => {
+    if (!inc) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/reports/${inc.id}/export?fmt=${fmt}`, {
+        headers: { Authorization: `Bearer ${getToken() || ''}` },
+      })
+      if (!res.ok) return
+      const blob = await res.blob()
+      const u = URL.createObjectURL(blob); const a = document.createElement('a')
+      a.href = u; a.download = `${inc.id}.${fmt}`; a.click(); URL.revokeObjectURL(u)
+    } catch { /* ignore */ }
+  }
 
   return (
     <div className="grid gap-4 @3xl:grid-cols-[300px_1fr]">
@@ -211,14 +268,19 @@ function IncidentsView({ incidents, selectedId, setSelectedId, onChanged }:
             </div>
 
             <div className="mt-6 text-xs uppercase tracking-wide text-white/35">{t('dashboard.incidents.timeline')}</div>
-            <div className="mt-3 space-y-3">
-              {(inc.timeline || []).map((ev: any, i: number) => (
-                <div key={i} className="flex items-start gap-3 text-sm">
-                  <span className="mt-0.5 text-xs text-white/40">{fmtTime(ev.ts)}</span>
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                  <span className="text-white/80">{ev.label}</span>
-                </div>
-              ))}
+            <div className="mt-3">
+              {(inc.timeline || []).map((ev: any, i: number, arr: any[]) => {
+                const c = tlColor(ev.label)
+                return (
+                  <div key={i} className="relative flex items-center gap-3 pb-3 last:pb-0">
+                    {i < arr.length - 1 && <span className="absolute left-[5px] top-3 h-full w-px bg-white/10" />}
+                    <span className="relative z-10 h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-[#111111]" style={{ background: c }} />
+                    <span className="w-16 shrink-0 font-mono text-xs text-white/40">{fmtTime(ev.ts)}</span>
+                    <span className="rounded-md px-2 py-0.5 text-sm text-white/85" style={{ background: `${c}1a` }}>{ev.label}</span>
+                  </div>
+                )
+              })}
+              {!(inc.timeline || []).length && <div className="text-sm text-white/40">—</div>}
             </div>
 
             <div className="mt-6 rounded-lg border border-white/10 bg-black/40 p-4">
@@ -231,6 +293,8 @@ function IncidentsView({ incidents, selectedId, setSelectedId, onChanged }:
                 </div>
               )}
             </div>
+
+            <IncidentInsight incidentId={inc.id} />
 
             {inc.recommended_actions?.length > 0 && (
               <div className="mt-4">
@@ -258,13 +322,24 @@ function IncidentsView({ incidents, selectedId, setSelectedId, onChanged }:
             </div>
             <p className="mt-2 text-xs text-white/35">{t('dashboard.incidents.blocknote')}</p>
 
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <div className="mb-2 text-xs uppercase tracking-wide text-white/35">Реагирование (SOAR)</div>
+              <IncidentActions incidentId={inc.id} onChanged={onChanged} />
+            </div>
+
             {report?.markdown && (
               <div className="mt-5 rounded-lg border border-white/10 bg-black/40">
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 text-xs text-white/40">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-2 text-xs text-white/40">
                   <span>{t('dashboard.incidents.report')}</span>
-                  <button onClick={dl} className="flex items-center gap-1 hover:text-white"><Download size={13} /> {t('dashboard.incidents.download')}</button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={dl} className="flex items-center gap-1 hover:text-white"><Download size={13} /> .md</button>
+                    <button onClick={() => dlFile('docx')} className="flex items-center gap-1 hover:text-white"><Download size={13} /> Word</button>
+                    <button onClick={() => dlFile('xlsx')} className="flex items-center gap-1 hover:text-white"><Download size={13} /> Excel</button>
+                  </div>
                 </div>
-                <pre className="max-h-80 overflow-auto whitespace-pre-wrap px-4 py-3 text-[13px] leading-relaxed text-white/75">{report.markdown}</pre>
+                <div className="max-h-80 overflow-auto px-4 py-3 text-sm leading-relaxed">
+                  <Md text={report.markdown} />
+                </div>
               </div>
             )}
 
@@ -347,6 +422,8 @@ const nav = [
   ['События', 'dashboard.nav.events', Activity],
   ['Детекторы', 'dashboard.nav.detectors', SlidersHorizontal],
   ['Источники', 'dashboard.nav.sources', KeyRound],
+  ['Импорт', 'Импорт логов', Upload],
+  ['Реакции', 'Реакции', Zap],
   ['Настройки', 'dashboard.nav.settings', Settings],
 ] as const
 
@@ -363,6 +440,7 @@ export function Dashboard() {
   const [menu, setMenu] = useState<'user' | 'bell' | null>(null)
   const [aiOpen, setAiOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  const [replaying, setReplaying] = useState(false)
 
   const loadAll = useCallback(async () => {
     try {
@@ -370,6 +448,11 @@ export function Dashboard() {
       setOverview(ov); setIncidents(inc); setEvents(ev)
     } catch {}
   }, [])
+
+  const replay = async () => {
+    setReplaying(true)
+    try { await api.replay() } catch {} finally { setReplaying(false); loadAll() }
+  }
 
   useEffect(() => { if (user) loadAll() }, [user, loadAll])
 
@@ -430,6 +513,10 @@ export function Dashboard() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <GlobalSearch incidents={incidents} events={events} onOpenIncident={openInc} onGotoEvents={() => setView('События')} />
+            <button onClick={replay} disabled={replaying}
+              className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0a8ae6] disabled:opacity-60">
+              <Play size={14} /> <span className="hidden sm:inline">{replaying ? 'Идёт атака…' : 'Проиграть атаку'}</span><span className="sm:hidden">Атака</span>
+            </button>
             <LanguageSwitcher />
             <div className="relative">
               <button onClick={() => setMenu(menu === 'bell' ? null : 'bell')} aria-label={t('dashboard.chrome.notifications')}
@@ -483,6 +570,8 @@ export function Dashboard() {
           {view === 'Инциденты' && <IncidentsView incidents={incidents} selectedId={selectedId} setSelectedId={setSelectedId} onChanged={loadAll} />}
           {view === 'Детекторы' && <DetectorsView />}
           {view === 'Источники' && <SourcesView />}
+          {view === 'Импорт' && <ImportView />}
+          {view === 'Реакции' && <ReactionsView />}
           {view === 'Настройки' && <SettingsView user={user} logout={logout} />}
         </main>
       </div>

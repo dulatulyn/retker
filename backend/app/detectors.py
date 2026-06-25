@@ -91,9 +91,12 @@ def detect_access(e: CanonicalEvent) -> list[Alert]:
         while fails and t - fails[0] > 60:
             fails.popleft()
         if len(fails) >= 5:
-            out.append(_mk(e, "brute_force", "access", 3,
-                           f"Брутфорс: {len(fails)} неудачных входов", user,
-                           {"fails": len(fails), "ip": e.actor.ip, "country": country}))
+            bf = st["bf_alert"]
+            if t - bf.get(user, 0.0) >= 30:
+                bf[user] = t
+                out.append(_mk(e, "brute_force", "access", 3,
+                               f"Брутфорс: {len(fails)} неудачных входов за 60с", user,
+                               {"fails": len(fails), "ip": e.actor.ip, "country": country}))
         return out
 
     if country and country in _COORDS:

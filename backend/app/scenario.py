@@ -77,16 +77,44 @@ def _event_from(org_id: str, step: dict):
     raise ValueError(k)
 
 
+_HOUR_W = [1, 1, 1, 1, 1, 1, 2, 4, 7, 9, 9, 8, 7, 8, 9, 9, 8, 6, 4, 3, 2, 1, 1, 1]
+
+
 def seed(org_id: str) -> None:
     rng = random.Random(42)
-    b = _base().replace(hour=0)
+    now = datetime.now(timezone.utc)
+    today0 = now.replace(hour=0, minute=0, second=0, microsecond=0)
     users = ["a.satE", "d.suleimen", "m.tulegen", "n.abenov", "u.berik"]
-    for _ in range(70):
-        h = rng.randint(8, 19)
-        ts = (b + timedelta(hours=h, minutes=rng.randint(0, 59))).isoformat()
+    devices = {u: f"PC-{100 + i}" for i, u in enumerate(users)}
+
+    def _ts(day_offset: int, cap_now: bool = False) -> str:
+        base = today0 - timedelta(days=day_offset)
+        hour = rng.choices(range(24), weights=_HOUR_W)[0]
+        dt = base + timedelta(hours=hour, minutes=rng.randint(0, 59), seconds=rng.randint(0, 59))
+        if cap_now and dt > now:
+            dt = now - timedelta(minutes=rng.randint(1, 90))
+        return dt.isoformat()
+
+    def _benign(day: int) -> None:
+        u = rng.choice(users)
         process_event(from_access(org_id, AccessIn(
-            ts=ts, user=rng.choice(users), ip="10.2.4." + str(rng.randint(2, 60)),
-            country="KZ", device="PC-" + str(rng.randint(100, 130)), success=True)))
+            ts=_ts(day, cap_now=(day == 0)), user=u, ip="10.2.4." + str(rng.randint(2, 60)),
+            country="KZ", device=devices[u], success=True)))
+
+    # реалистичный фоновый поток за 30 дней (суточный паттерн «рабочие часы»)
+    for day in range(30, -1, -1):
+        for _ in range(rng.randint(10, 24)):
+            _benign(day)
+
+    # редкие исторические угрозы — чтобы на графике были цветные всплески по времени
+    for day in (3, 7, 12, 18, 24, 28):
+        base = today0 - timedelta(days=day)
+        ts = (base + timedelta(hours=rng.randint(9, 18), minutes=rng.randint(0, 59))).isoformat()
+        process_event(from_access(org_id, AccessIn(
+            ts=ts, user=rng.choice(users), ip="45.146.84." + str(rng.randint(2, 250)),
+            country=rng.choice(["RU", "DE", "TR"]), success=True)))
+
+    # геройский сценарий — сегодня
     for step in hero_steps():
         process_event(_event_from(org_id, step))
 
